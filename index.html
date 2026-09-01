@@ -376,6 +376,8 @@
       <button class="small-link" onclick="goTo('home')" style="color:var(--muted);">← Retour</button>
     </div>
     <div class="status-dot" id="pLinkStatus"><i></i><span id="pLinkText">Connexion…</span></div>
+    <div id="debugBox" style="position:absolute; top:44px; left:14px; z-index:6; background:rgba(0,0,0,0.6); color:#7fe0a0;
+      font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 10px; border-radius:8px; line-height:1.5; max-width:260px;"></div>
     <button class="exit-btn" onclick="exitPatientView()">Quitter</button>
     <div id="pausedBanner" style="display:none; position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:6;
       background:rgba(0,0,0,0.6); color:#fff; padding:8px 18px; border-radius:999px; font-size:13px; letter-spacing:0.02em;">
@@ -860,6 +862,7 @@ function startPatientSync(){
   lastFetchOkAt = 0;
   pollInterval = setInterval(async ()=>{
     const remote = await readState(sessionCode);
+    const dbg = document.getElementById('debugBox');
     if(remote){
       lastFetchOkAt = Date.now(); // horloge du patient uniquement : pas de comparaison entre appareils
       const myStopAt = state.emergencyStopAt || 0;
@@ -868,6 +871,9 @@ function startPatientSync(){
       if(myStopAt > (remote.emergencyStopAt || 0)){ state.emergencyStopAt = myStopAt; state.playing = false; }
       applyStereoLayout();
       document.getElementById('pausedBanner').style.display = state.playing ? 'none' : 'block';
+      if(dbg) dbg.textContent = `reçu: ${JSON.stringify({pattern:remote.pattern, speed:remote.speed, updatedAt:remote.updatedAt}, null, 0)} — ${new Date().toLocaleTimeString()}`;
+    } else {
+      if(dbg) dbg.textContent = `AUCUNE DONNÉE reçue (remote=null) — ${new Date().toLocaleTimeString()}`;
     }
     const fresh = lastFetchOkAt && (Date.now() - lastFetchOkAt) < CONNECTION_STALE_MS;
     const statusEl = document.getElementById('pLinkStatus');
