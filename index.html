@@ -418,6 +418,7 @@ function setFirebaseUrl(url){
 }
 
 async function writeState(code, state){
+  state.updatedAt = Date.now(); // toujours frais, même pour le heartbeat silencieux
   if(isLocalNetwork()){
     try{
       await fetch(`/api/state/${code}`, {
