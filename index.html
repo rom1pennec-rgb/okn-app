@@ -442,7 +442,7 @@ async function writeState(code, state){
 async function readState(code){
   if(isLocalNetwork()){
     try{
-      const res = await fetch(`/api/state/${code}`);
+      const res = await fetch(`/api/state/${code}?t=${Date.now()}`, {cache: 'no-store'});
       const data = await res.json();
       return data || null;
     }catch(e){ return null; }
@@ -450,7 +450,7 @@ async function readState(code){
   const base = getFirebaseUrl();
   if(!base) return null;
   try{
-    const res = await fetch(`${base}/${KEY_PREFIX}${code}.json`);
+    const res = await fetch(`${base}/${KEY_PREFIX}${code}.json?t=${Date.now()}`, {cache: 'no-store'});
     const data = await res.json();
     return data || null;
   }catch(e){ return null; }
@@ -821,13 +821,31 @@ function joinAsPatient(){
   };
 }
 
+let wakeLock = null;
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  }catch(e){ /* non supporté ou refusé : on continue sans */ }
+}
+document.addEventListener('visibilitychange', async ()=>{
+  // Le verrou est automatiquement relâché par le navigateur quand l'app passe en arrière-plan ;
+  // on le redemande dès qu'elle redevient visible pendant une séance patient en cours.
+  if(document.visibilityState === 'visible' && role === 'patient' && sessionCode){
+    await requestWakeLock();
+  }
+});
+
 function startPatientFullscreen(){
   const el = document.getElementById('app');
   if(el.requestFullscreen){ el.requestFullscreen().catch(()=>{}); }
   document.getElementById('patientOverlay').style.display = 'none';
+  requestWakeLock();
 }
 function exitPatientView(){
   if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); }
+  if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
   clearInterval(pollInterval);
   sessionCode = null;
   goTo('home');
