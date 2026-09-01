@@ -835,28 +835,31 @@ function exitPatientView(){
 }
 
 const CONNECTION_STALE_MS = 7000;
+let lastFetchOkAt = 0;
 function startPatientSync(){
   clearInterval(pollInterval);
+  lastFetchOkAt = 0;
   pollInterval = setInterval(async ()=>{
     const remote = await readState(sessionCode);
     if(remote){
+      lastFetchOkAt = Date.now(); // horloge du patient uniquement : pas de comparaison entre appareils
       const myStopAt = state.emergencyStopAt || 0;
       Object.assign(state, remote);
       // Ne jamais laisser une mise à jour distante annuler un arrêt d'urgence local plus récent
       if(myStopAt > (remote.emergencyStopAt || 0)){ state.emergencyStopAt = myStopAt; state.playing = false; }
       applyStereoLayout();
       document.getElementById('pausedBanner').style.display = state.playing ? 'none' : 'block';
-      const fresh = remote.updatedAt && (Date.now() - remote.updatedAt) < CONNECTION_STALE_MS;
-      const statusEl = document.getElementById('pLinkStatus');
-      if(fresh){
-        statusEl.classList.add('linked');
-        document.getElementById('pLinkText').textContent = 'Connecté au thérapeute';
-      } else {
-        statusEl.classList.remove('linked');
-        document.getElementById('pLinkText').textContent = 'Signal instable…';
-      }
+    }
+    const fresh = lastFetchOkAt && (Date.now() - lastFetchOkAt) < CONNECTION_STALE_MS;
+    const statusEl = document.getElementById('pLinkStatus');
+    if(fresh){
+      statusEl.classList.add('linked');
+      document.getElementById('pLinkText').textContent = 'Connecté au thérapeute';
+    } else if(lastFetchOkAt){
+      statusEl.classList.remove('linked');
+      document.getElementById('pLinkText').textContent = 'Signal instable…';
     } else {
-      document.getElementById('pLinkStatus').classList.remove('linked');
+      statusEl.classList.remove('linked');
       document.getElementById('pLinkText').textContent = 'En attente du thérapeute…';
     }
   }, 300);
