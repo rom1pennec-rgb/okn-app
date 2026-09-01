@@ -139,8 +139,27 @@
 <body>
 <div id="app">
 
+  <!-- ============ SETUP (première utilisation) ============ -->
+  <section id="setupScreen" class="screen">
+    <div class="center-card" style="max-width:480px;">
+      <h2>Configuration initiale</h2>
+      <p>Pour que thérapeute et patient se synchronisent entre deux appareils, l'app a besoin d'une base de données gratuite (Firebase, par Google). À faire une seule fois, sur chaque appareil.</p>
+      <div style="text-align:left; font-size:13px; color:var(--muted); background:var(--panel-2); border-radius:10px; padding:14px; margin-bottom:16px; line-height:1.6;">
+        1. Allez sur <a href="https://console.firebase.google.com" target="_blank" style="color:var(--gold);">console.firebase.google.com</a><br>
+        2. "Ajouter un projet" → donnez-lui un nom → créez-le (gratuit)<br>
+        3. Menu de gauche : Build → Realtime Database → "Créer une base de données"<br>
+        4. Choisissez "Démarrer en mode test"<br>
+        5. Copiez l'URL affichée en haut (ex: https://xxx-default-rtdb.europe-west1.firebasedatabase.app) et collez-la ci-dessous
+      </div>
+      <input type="text" class="code-input mono" id="firebaseUrlInput" placeholder="https://...firebasedatabase.app" style="font-size:14px; padding:12px; text-align:left;">
+      <button class="btn btn-primary btn-block" onclick="saveFirebaseConfig()">Enregistrer et continuer</button>
+      <p id="setupError" style="display:none; color:var(--danger); font-size:13px; margin-top:10px;">Merci de coller une URL valide.</p>
+      <button class="small-link" onclick="goTo('home')" id="setupBackBtn" style="display:none;">← Retour</button>
+    </div>
+  </section>
+
   <!-- ============ HOME ============ -->
-  <section id="home" class="screen active">
+  <section id="home" class="screen">
     <div class="horizon" aria-hidden="true">
       <svg viewBox="0 0 400 64" preserveAspectRatio="none">
         <g class="horizon-inner">
@@ -165,6 +184,7 @@
         <p>Saisissez le code donné par le thérapeute pour afficher le champ visuel en plein écran dans le casque.</p>
       </div>
     </div>
+    <button class="small-link" onclick="openSetupToEdit()" style="margin-top:22px;">⚙ Réglages de connexion</button>
   </section>
 
   <!-- ============ CREATE SESSION (therapist pre-screen) ============ -->
@@ -379,17 +399,59 @@
 </div>
 
 <script>
-/* ---------------- Storage helpers ---------------- */
+/* ---------------- Storage helpers (relais local en priorité, Firebase sinon) ---------------- */
 const KEY_PREFIX = 'okn-session-';
+const CONFIG_KEY = 'okn-firebase-url';
+
+function isLocalNetwork(){
+  const h = location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' ||
+    h.startsWith('192.168.') || h.startsWith('10.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(h);
+}
+
+function getFirebaseUrl(){
+  return localStorage.getItem(CONFIG_KEY) || '';
+}
+function setFirebaseUrl(url){
+  localStorage.setItem(CONFIG_KEY, url.replace(/\/$/, ''));
+}
 
 async function writeState(code, state){
-  try{ await window.storage.set(KEY_PREFIX + code, JSON.stringify(state), true); }
-  catch(e){ console.error('write failed', e); }
+  if(isLocalNetwork()){
+    try{
+      await fetch(`/api/state/${code}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(state)
+      });
+    }catch(e){ console.error('write failed (local)', e); }
+    return;
+  }
+  const base = getFirebaseUrl();
+  if(!base) return;
+  try{
+    await fetch(`${base}/${KEY_PREFIX}${code}.json`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(state)
+    });
+  }catch(e){ console.error('write failed', e); }
 }
 async function readState(code){
+  if(isLocalNetwork()){
+    try{
+      const res = await fetch(`/api/state/${code}`);
+      const data = await res.json();
+      return data || null;
+    }catch(e){ return null; }
+  }
+  const base = getFirebaseUrl();
+  if(!base) return null;
   try{
-    const r = await window.storage.get(KEY_PREFIX + code, true);
-    return r ? JSON.parse(r.value) : null;
+    const res = await fetch(`${base}/${KEY_PREFIX}${code}.json`);
+    const data = await res.json();
+    return data || null;
   }catch(e){ return null; }
 }
 
@@ -423,6 +485,31 @@ function goTo(id){
   document.getElementById(id).classList.add('active');
 }
 
+function saveFirebaseConfig(){
+  const val = document.getElementById('firebaseUrlInput').value.trim();
+  if(!val.startsWith('https://') || !val.includes('firebasedatabase.app')){
+    document.getElementById('setupError').style.display = 'block';
+    return;
+  }
+  setFirebaseUrl(val);
+  goTo('home');
+}
+
+function openSetupToEdit(){
+  document.getElementById('firebaseUrlInput').value = getFirebaseUrl();
+  document.getElementById('setupError').style.display = 'none';
+  document.getElementById('setupBackBtn').style.display = 'inline';
+  goTo('setupScreen');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if(isLocalNetwork() || getFirebaseUrl()){
+    goTo('home');
+  } else {
+    goTo('setupScreen');
+  }
+});
+
 function genCode(){
   return String(Math.floor(1000 + Math.random()*9000));
 }
@@ -432,11 +519,7 @@ function createSessionFlow(){
   sessionCode = genCode();
   document.getElementById('sessionCodeDisplay').textContent = sessionCode;
 }
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelector('[onclick="goTo(\'createSession\')"]');
-});
 
-// Wire role card for create session to also generate the code right away
 const originalGoTo = goTo;
 window.goTo = function(id){
   if(id === 'createSession' && !sessionCode){ createSessionFlow(); }
@@ -991,3 +1074,4 @@ if('serviceWorker' in navigator){
 </script>
 </body>
 </html>
+
