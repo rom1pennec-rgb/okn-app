@@ -108,6 +108,9 @@
   .field label{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:8px;}
   .field label span.val{color:var(--text); font-weight:600; font-family:'IBM Plex Mono',monospace;}
   input[type=range]{width:100%; accent-color:var(--gold);}
+  input[type=checkbox]{accent-color:var(--gold); width:16px; height:16px; vertical-align:middle;}
+  .eval-step-row{display:flex; align-items:center; gap:10px; padding:7px 0; font-size:13.5px; cursor:pointer; border-bottom:1px solid var(--line);}
+  .eval-step-row:last-child{border-bottom:none;}
   .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:4px 0;}
   .switch{position:relative; width:44px; height:24px; background:var(--panel-2); border:1px solid var(--line); border-radius:999px; cursor:pointer;}
   .switch .knob{position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--muted); transition:.15s;}
@@ -185,7 +188,7 @@
       </div>
     </div>
     <button class="small-link" onclick="openSetupToEdit()" style="margin-top:22px;">⚙ Réglages de connexion</button>
-    <p class="mono" style="text-align:center; color:var(--muted); font-size:11px; margin-top:10px; opacity:0.6;">version 2026-09-01-c</p>
+    <p class="mono" style="text-align:center; color:var(--muted); font-size:11px; margin-top:10px; opacity:0.6;">version 2026-09-16-c</p>
   </section>
 
   <!-- ============ CREATE SESSION (therapist pre-screen) ============ -->
@@ -237,6 +240,54 @@
     <div class="panel">
       <h3>Aperçu (ce que voit le patient)</h3>
       <div class="preview-box"><canvas id="previewCanvas"></canvas></div>
+    </div>
+
+    <div class="panel" id="evalPanel">
+      <h3>Mode Évaluation <span style="text-transform:none; letter-spacing:normal; font-weight:400;">— identifie les stimulations les plus inconfortables pour ce patient</span></h3>
+
+      <div id="evalIdle">
+        <p style="font-size:13px; color:var(--muted); margin:0 0 14px;">
+          Enchaîne les stimulations cochées ci-dessous et retient le pic de gêne signalé par le patient à chaque étape. À la fin, la stimulation la plus inconfortable peut être reprise directement en mode Thérapie ci-dessous.
+        </p>
+        <div class="field">
+          <label>Durée par étape <span class="val mono" id="evalDurationVal">15</span> s</label>
+          <input type="range" id="evalDurationSlider" min="5" max="60" value="15">
+        </div>
+        <div style="margin-bottom:16px;">
+          <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">Étapes incluses</div>
+          <div id="evalStepsCheckboxes"></div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="startEvaluation()">▶ Démarrer l'évaluation</button>
+        <p id="evalSelectError" style="display:none; color:var(--danger); font-size:12.5px; margin-top:8px;">Sélectionnez au moins une étape.</p>
+      </div>
+
+      <div id="evalRunning" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span id="evalStepLabel" style="font-weight:600; font-size:14px;"></span>
+          <span class="mono" id="evalCountdown" style="font-size:20px;">--:--</span>
+        </div>
+        <div style="height:8px; border-radius:999px; background:var(--panel-2); overflow:hidden; margin-bottom:12px;">
+          <div id="evalStepProgress" style="height:100%; width:0%; background:var(--gold); transition:width .3s;"></div>
+        </div>
+        <p style="font-size:13px; color:var(--muted); margin:0 0 14px;">
+          Gêne actuelle : <span class="mono" id="evalCurrentDiscomfort">—</span>/10
+          &nbsp;·&nbsp; Pic de cette étape : <span class="mono" id="evalPeakDiscomfort">0</span>/10
+        </p>
+        <div class="transport">
+          <button class="btn btn-secondary" onclick="skipEvalStep()">⏭ Étape suivante</button>
+          <button class="btn btn-danger" onclick="stopEvaluation()">⏹ Arrêter l'évaluation</button>
+        </div>
+      </div>
+
+      <div id="evalResults" style="display:none;">
+        <h3 style="margin-top:0; font-size:14px;">Résultats — du plus au moins inconfortable</h3>
+        <div id="evalResultsList"></div>
+        <div class="transport" style="margin-top:14px;">
+          <button class="btn btn-secondary" onclick="copyEvalResults()">Copier les résultats</button>
+          <button class="btn btn-secondary" onclick="resetEvaluation()">Refaire une évaluation</button>
+        </div>
+        <span id="evalCopyConfirm" style="display:none; color:var(--ok); font-size:12.5px; margin-top:8px;">Copié ✓</span>
+      </div>
     </div>
 
     <div class="panel">
@@ -541,6 +592,7 @@ function enterTherapistPanel(){
   startTherapistPreview();
   startTimer();
   wireControls();
+  renderEvalConfig();
   watchForPatientEmergency();
   clearInterval(heartbeatInterval);
   heartbeatInterval = setInterval(()=> writeState(sessionCode, state), 4000);
@@ -675,6 +727,190 @@ function wireControls(){
     pushState();
   };
   syncUI();
+}
+
+/* ---------------- Mode Évaluation ---------------- */
+const EVAL_STEPS = [
+  { label: 'Bandes verticales → droite', pattern:'stripes-v', settings:{right:true} },
+  { label: 'Bandes verticales → gauche', pattern:'stripes-v', settings:{left:true} },
+  { label: 'Bandes horizontales → bas', pattern:'stripes-h', settings:{down:true} },
+  { label: 'Bandes horizontales → haut', pattern:'stripes-h', settings:{up:true} },
+  { label: 'Points → diagonale', pattern:'dots', settings:{right:true, down:true} },
+  { label: 'Damier → droite', pattern:'checker', settings:{right:true} },
+  { label: 'Tunnel avant', pattern:'tunnel', settings:{tunnelDir:1} },
+  { label: 'Tunnel arrière', pattern:'tunnel', settings:{tunnelDir:-1} },
+  { label: 'Inclinaison horaire', pattern:'stripes-v', settings:{tiltCW:true} },
+  { label: 'Inclinaison antihoraire', pattern:'stripes-v', settings:{tiltCCW:true} },
+];
+let evalDuration = 15; // secondes, ajustable par le thérapeute
+let evalStepsEnabled = EVAL_STEPS.map(()=>true);
+let evalActiveSteps = [];
+
+let evalRunning = false;
+let evalStepIndex = 0;
+let evalResults = [];
+let evalTimer = null;
+let evalPeak = 0;
+let evalRemaining = 0;
+
+function renderEvalConfig(){
+  const container = document.getElementById('evalStepsCheckboxes');
+  if(!container || container.dataset.rendered) return; // ne construire qu'une fois
+  container.dataset.rendered = '1';
+  EVAL_STEPS.forEach((step, i)=>{
+    const row = document.createElement('label');
+    row.className = 'eval-step-row';
+    row.innerHTML = `<input type="checkbox" checked data-idx="${i}"><span>${step.label}</span>`;
+    row.querySelector('input').onchange = (e)=>{ evalStepsEnabled[i] = e.target.checked; };
+    container.appendChild(row);
+  });
+  const durSlider = document.getElementById('evalDurationSlider');
+  durSlider.oninput = (e)=>{
+    evalDuration = parseInt(e.target.value);
+    document.getElementById('evalDurationVal').textContent = evalDuration;
+  };
+}
+
+function applyEvalStep(step){
+  Object.assign(state, {
+    up:false, down:false, left:false, right:false,
+    tiltCW:false, tiltCCW:false, tunnelDir:1,
+    pattern: step.pattern
+  });
+  Object.assign(state, step.settings);
+  syncUI();
+  pushState();
+}
+
+function startEvaluation(){
+  evalActiveSteps = EVAL_STEPS.filter((_, i)=> evalStepsEnabled[i]);
+  if(evalActiveSteps.length === 0){
+    document.getElementById('evalSelectError').style.display = 'block';
+    return;
+  }
+  document.getElementById('evalSelectError').style.display = 'none';
+  evalRunning = true;
+  evalStepIndex = 0;
+  evalResults = [];
+  document.getElementById('evalIdle').style.display = 'none';
+  document.getElementById('evalResults').style.display = 'none';
+  document.getElementById('evalRunning').style.display = 'block';
+  runEvalStep();
+}
+
+function runEvalStep(){
+  if(evalStepIndex >= evalActiveSteps.length){
+    finishEvaluation();
+    return;
+  }
+  const step = evalActiveSteps[evalStepIndex];
+  applyEvalStep(step);
+  evalPeak = state.discomfort || 0;
+  evalRemaining = evalDuration;
+  document.getElementById('evalStepLabel').textContent = `Étape ${evalStepIndex+1}/${evalActiveSteps.length} — ${step.label}`;
+  updateEvalDisplay();
+  clearInterval(evalTimer);
+  evalTimer = setInterval(()=>{
+    if(!evalRunning) return;
+    if(state.discomfort !== null && state.discomfort !== undefined && state.discomfort > evalPeak){
+      evalPeak = state.discomfort;
+    }
+    document.getElementById('evalCurrentDiscomfort').textContent = (state.discomfort ?? '—');
+    document.getElementById('evalPeakDiscomfort').textContent = evalPeak;
+    // En pause (ex: arrêt d'urgence patient) : on ne décompte pas, on attend la reprise
+    if(!state.playing) return;
+    evalRemaining--;
+    updateEvalDisplay();
+    if(evalRemaining <= 0){
+      clearInterval(evalTimer);
+      evalResults.push({ label: step.label, discomfort: evalPeak });
+      evalStepIndex++;
+      runEvalStep();
+    }
+  }, 1000);
+}
+
+function updateEvalDisplay(){
+  const m = Math.floor(Math.max(0,evalRemaining)/60), s = Math.max(0,evalRemaining)%60;
+  document.getElementById('evalCountdown').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const pct = Math.max(0, Math.min(100, ((evalDuration - evalRemaining)/evalDuration)*100));
+  document.getElementById('evalStepProgress').style.width = pct + '%';
+}
+
+function skipEvalStep(){
+  clearInterval(evalTimer);
+  const step = evalActiveSteps[evalStepIndex];
+  evalResults.push({ label: step.label, discomfort: evalPeak });
+  evalStepIndex++;
+  runEvalStep();
+}
+
+function stopEvaluation(){
+  evalRunning = false;
+  clearInterval(evalTimer);
+  document.getElementById('evalRunning').style.display = 'none';
+  document.getElementById('evalIdle').style.display = 'block';
+}
+
+let lastEvalSorted = [];
+
+function finishEvaluation(){
+  evalRunning = false;
+  clearInterval(evalTimer);
+  document.getElementById('evalRunning').style.display = 'none';
+  const sorted = [...evalResults].sort((a,b)=> b.discomfort - a.discomfort);
+  lastEvalSorted = sorted;
+  const listEl = document.getElementById('evalResultsList');
+  listEl.innerHTML = '';
+  sorted.forEach((r, i)=>{
+    const barColor = r.discomfort >= 7 ? 'var(--danger)' : (r.discomfort >= 4 ? 'var(--gold)' : 'var(--ok)');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);';
+    row.innerHTML = `
+      <div style="flex:1;">
+        <div style="font-weight:${i===0 ? '700' : '400'}; font-size:13.5px;">${i===0 ? '🎯 ' : ''}${r.label}</div>
+        <div style="height:5px; width:100%; max-width:160px; border-radius:999px; background:var(--panel-2); overflow:hidden; margin-top:5px;">
+          <div style="height:100%; width:${r.discomfort*10}%; background:${barColor};"></div>
+        </div>
+      </div>
+      <span class="mono" style="font-size:15px; white-space:nowrap;">${r.discomfort}/10</span>
+    `;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-secondary';
+    btn.style.cssText = 'font-size:12px; padding:8px 12px; white-space:nowrap;';
+    btn.textContent = 'Utiliser en Thérapie';
+    btn.onclick = ()=> useEvalResultInTherapy(r.label);
+    row.appendChild(btn);
+    listEl.appendChild(row);
+  });
+  document.getElementById('evalResults').style.display = 'block';
+}
+
+function copyEvalResults(){
+  if(!lastEvalSorted.length) return;
+  const date = new Date().toLocaleString('fr-FR');
+  const lines = [
+    `Évaluation optocinétique — ${date}`,
+    '',
+    ...lastEvalSorted.map((r, i) => `${i+1}. ${r.label} — gêne max ${r.discomfort}/10`)
+  ];
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+    const conf = document.getElementById('evalCopyConfirm');
+    conf.style.display = 'block';
+    setTimeout(()=> conf.style.display = 'none', 2000);
+  }).catch(()=>{});
+}
+
+function useEvalResultInTherapy(label){
+  const step = EVAL_STEPS.find(s=>s.label === label);
+  if(step) applyEvalStep(step);
+  document.getElementById('evalResults').style.display = 'none';
+  document.getElementById('evalIdle').style.display = 'block';
+}
+
+function resetEvaluation(){
+  document.getElementById('evalResults').style.display = 'none';
+  document.getElementById('evalIdle').style.display = 'block';
 }
 
 function applyPreset(name){
