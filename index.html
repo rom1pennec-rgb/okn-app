@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Rééducation optocinétique</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0E2226">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Optocinétique">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #0E2226;
+    --panel: #163338;
+    --panel-2: #1C3F45;
+    --line: rgba(238,243,242,0.12);
+    --text: #EEF3F2;
+    --muted: #93ACA9;
+    --gold: #D9A441;
+    --gold-dim: rgba(217,164,65,0.15);
+    --periwinkle: #8AA6E8;
+    --ok: #6FBFA0;
+    --danger: #D97B6C;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--ink);color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif; -webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace; letter-spacing:0.04em;}
+  #app{position:relative; width:100%; min-height:100vh;}
+  .screen{display:none; min-height:100vh;}
+  .screen.active{display:flex; flex-direction:column;}
+
+  /* ---------- Horizon signature ---------- */
+  .horizon{position:relative; width:100%; height:64px; overflow:hidden; opacity:0.9;}
+  .horizon svg{position:absolute; top:0; left:0; width:100%; height:100%;}
+  .horizon-line{stroke:var(--gold); stroke-width:1.5; opacity:0.8;}
+  @keyframes driftTilt{
+    0%{transform:rotate(-2.2deg) translateY(0);}
+    50%{transform:rotate(2.2deg) translateY(2px);}
+    100%{transform:rotate(-2.2deg) translateY(0);}
+  }
+  .horizon-inner{animation:driftTilt 9s ease-in-out infinite; transform-origin:50% 50%;}
+  @media (prefers-reduced-motion: reduce){ .horizon-inner{animation:none;} }
+
+  /* ---------- Home ---------- */
+  #home{align-items:center; justify-content:flex-start; padding:0 20px 40px;}
+  .home-header{width:100%; max-width:640px; text-align:center; margin:36px auto 8px;}
+  .home-header h1{font-size:28px; font-weight:600; margin:18px 0 8px;}
+  .home-header p{color:var(--muted); font-size:15px; margin:0; line-height:1.5;}
+  .role-cards{width:100%; max-width:640px; margin:28px auto 0; display:flex; flex-direction:column; gap:14px;}
+  .role-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px; text-align:left; cursor:pointer; transition:border-color .15s, transform .15s;}
+  .role-card:hover{border-color:var(--gold); transform:translateY(-1px);}
+  .role-card:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+  .role-card .tag{font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--gold); font-weight:600;}
+  .role-card h3{margin:6px 0 4px; font-size:19px;}
+  .role-card p{margin:0; color:var(--muted); font-size:13.5px; line-height:1.5;}
+  .disclaimer{max-width:640px; margin:28px auto 0; padding:14px 16px; border-radius:10px;
+    background:var(--gold-dim); border:1px solid rgba(217,164,65,0.3); font-size:12.5px; color:var(--muted); line-height:1.5;}
+
+  /* ---------- Join / create panels ---------- */
+  .center-card{max-width:420px; margin:60px auto; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:28px; text-align:center;}
+  .center-card h2{margin:0 0 6px; font-size:20px;}
+  .center-card p{color:var(--muted); font-size:13.5px; margin:0 0 20px;}
+  .code-display{font-size:38px; font-weight:600; letter-spacing:0.15em; padding:14px 0; color:var(--gold);}
+  input.code-input{width:100%; font-size:26px; text-align:center; letter-spacing:0.2em; padding:12px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px; color:var(--text); margin-bottom:14px;}
+  input.code-input:focus{outline:none; border-color:var(--periwinkle);}
+  .btn{appearance:none; border:none; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; font-weight:600;
+    font-size:14.5px; padding:12px 18px; border-radius:10px; transition:filter .15s, transform .1s;}
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--gold); color:#1A1206;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-secondary{background:var(--panel-2); color:var(--text); border:1px solid var(--line);}
+  .btn-ghost{background:transparent; color:var(--muted); border:1px solid var(--line);}
+  .btn-block{width:100%;}
+  .btn-danger{background:var(--danger); color:#2B0F0A;}
+  .small-link{margin-top:14px; font-size:13px; color:var(--muted); text-decoration:underline; cursor:pointer; background:none; border:none;}
+
+  /* ---------- Therapist view ---------- */
+  #therapist{padding:20px 16px 60px;}
+  .t-header{max-width:760px; margin:0 auto 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .t-header .code-chip{background:var(--panel-2); border:1px solid var(--line); border-radius:999px; padding:6px 14px; font-size:13px;}
+  .t-header .code-chip b{color:var(--gold);}
+  .t-timer{font-size:22px; font-weight:600;}
+  .panel{max-width:760px; margin:0 auto 16px; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:20px;}
+  .panel h3{margin:0 0 14px; font-size:14px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600;}
+  .preview-box{width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; position:relative; margin-bottom:4px;}
+  .preview-box canvas{width:100%; height:100%; display:block;}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .choice-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;}
+  @media(min-width:520px){ .choice-grid{grid-template-columns:repeat(4,1fr);} }
+  .choice{padding:10px 8px; text-align:center; border-radius:9px; background:var(--panel-2); border:1px solid var(--line);
+    cursor:pointer; font-size:13px; color:var(--text);}
+  .choice.active{border-color:var(--gold); background:rgba(217,164,65,0.14); color:var(--gold);}
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:8px;}
+  .field label span.val{color:var(--text); font-weight:600; font-family:'IBM Plex Mono',monospace;}
+  input[type=range]{width:100%; accent-color:var(--gold);}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:4px 0;}
+  .switch{position:relative; width:44px; height:24px; background:var(--panel-2); border:1px solid var(--line); border-radius:999px; cursor:pointer;}
+  .switch .knob{position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--muted); transition:.15s;}
+  .switch.on{background:rgba(217,164,65,0.25); border-color:var(--gold);}
+  .switch.on .knob{left:22px; background:var(--gold);}
+  .transport{display:flex; gap:10px; margin-top:6px;}
+  .transport .btn{flex:1;}
+  .footer-actions{max-width:760px; margin:22px auto 0; text-align:center;}
+
+  /* ---------- Patient view ---------- */
+  #patient{background:#000; padding:0; align-items:stretch; justify-content:stretch; position:relative;}
+  .stim-wrap{position:relative; width:100%; height:100vh; display:flex;}
+  .stim-half{position:relative; flex:1; overflow:hidden; background:#000;}
+  .stim-half canvas{width:100%; height:100%; display:block;}
+  .patient-overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:16px; background:rgba(14,34,38,0.92); z-index:5; text-align:center; padding:24px;}
+  .patient-overlay h2{margin:0; font-size:22px;}
+  .patient-overlay p{color:var(--muted); font-size:14px; max-width:320px; margin:0;}
+  .exit-btn{position:absolute; top:14px; right:14px; z-index:6; background:rgba(0,0,0,0.45); color:#fff;
+    border:1px solid rgba(255,255,255,0.25); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer;}
+  .status-dot{position:absolute; top:14px; left:14px; z-index:6; display:flex; align-items:center; gap:7px;
+    background:rgba(0,0,0,0.45); border-radius:999px; padding:6px 12px; font-size:11px; color:#fff; letter-spacing:0.03em;}
+  .status-dot i{width:7px; height:7px; border-radius:50%; background:var(--danger); display:inline-block;}
+  .status-dot.linked i{background:var(--ok);}
+
+  /* Écran patient : immersion totale (pas d'indicateur, pas de bandeau, bouton Quitter invisible : double-clic en haut à droite) */
+  #pLinkStatus, #pausedBanner{display:none !important;}
+  .exit-btn{opacity:0; width:70px; height:70px; padding:0; background:transparent !important; border:none !important; color:transparent;}
+
+  /* Panneau thérapeute : une seule page, sans défilement sur écran large */
+  .t-header .status-dot{position:static; background:var(--panel-2); color:var(--text);}
+  .t-grid{max-width:760px; margin:0 auto;}
+  .t-col{display:block;}
+  .fields2{display:grid; grid-template-columns:1fr 1fr; gap:6px 18px;}
+  .fields2 .field{margin-bottom:6px;}
+  .choice-grid.cols5{grid-template-columns:repeat(5,1fr);}
+  .choice-grid.cols6{grid-template-columns:repeat(3,1fr);}
+  @media(min-width:900px){
+    #therapist.active{height:100vh; overflow:auto; padding:8px 14px 10px;}
+    .t-header{max-width:none; width:100%; margin:0 0 8px;}
+    .t-grid{max-width:none; width:100%; flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:12px;}
+    .t-col{display:flex; flex-direction:column; gap:10px; min-height:0;}
+    .t-col .panel{max-width:none; margin:0; padding:11px 14px;}
+    .t-col .panel h3{margin-bottom:8px; font-size:12px;}
+    .preview-box{width:min(100%, calc(30vh * 1.7778)); margin:0 auto;}
+    .choice{padding:8px 4px; font-size:12.5px;}
+    .choice-grid{margin-bottom:10px; gap:6px;}
+    .choice-grid.cols6{grid-template-columns:repeat(6,1fr);}
+    .toggle-row{padding:2px 0;}
+  }
+  .visually-hidden{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SETUP (première utilisation) ============ -->
+  <section id="setupScreen" class="screen">
+    <div class="center-card" style="max-width:480px;">
+      <h2>Configuration initiale</h2>
+      <p>Pour que thérapeute et patient se synchronisent entre deux appareils, l'app a besoin d'une base de données gratuite (Firebase, par Google). À faire une seule fois, sur chaque appareil.</p>
+      <div style="text-align:left; font-size:13px; color:var(--muted); background:var(--panel-2); border-radius:10px; padding:14px; margin-bottom:16px; line-height:1.6;">
+        1. Allez sur <a href="https://console.firebase.google.com" target="_blank" style="color:var(--gold);">console.firebase.google.com</a><br>
+        2. "Ajouter un projet" → donnez-lui un nom → créez-le (gratuit)<br>
+        3. Menu de gauche : Build → Realtime Database → "Créer une base de données"<br>
+        4. Choisissez "Démarrer en mode test"<br>
+        5. Copiez l'URL affichée en haut (ex: https://xxx-default-rtdb.europe-west1.firebasedatabase.app) et collez-la ci-dessous
+      </div>
+      <input type="text" class="code-input mono" id="firebaseUrlInput" placeholder="https://...firebasedatabase.app" style="font-size:14px; padding:12px; text-align:left;">
+      <button class="btn btn-primary btn-block" onclick="saveFirebaseConfig()">Enregistrer et continuer</button>
+      <p id="setupError" style="display:none; color:var(--danger); font-size:13px; margin-top:10px;">Merci de coller une URL valide.</p>
+      <button class="small-link" onclick="goTo('home')" id="setupBackBtn" style="display:none;">← Retour</button>
+    </div>
+  </section>
+
+  <!-- ============ HOME ============ -->
+  <section id="home" class="screen">
+    <div class="horizon" aria-hidden="true">
+      <svg viewBox="0 0 400 64" preserveAspectRatio="none">
+        <g class="horizon-inner">
+          <line x1="-20" y1="32" x2="420" y2="32" class="horizon-line"/>
+          <circle cx="200" cy="32" r="3" fill="#D9A441"/>
+        </g>
+      </svg>
+    </div>
+    <div class="home-header">
+      <h1>Rééducation optocinétique</h1>
+      <p>Un champ visuel piloté à distance : le patient porte le casque, vous réglez le stimulus depuis votre ordinateur en temps réel.</p>
+    </div>
+    <div class="role-cards">
+      <div class="role-card" tabindex="0" role="button" onclick="goTo('createSession')">
+        <div class="tag">Ordinateur</div>
+        <h3>Je suis le thérapeute</h3>
+        <p>Créez une séance, obtenez un code, et pilotez le motif, la vitesse et la direction pendant que le patient est dans le casque.</p>
+      </div>
+      <div class="role-card" tabindex="0" role="button" onclick="goTo('joinSession')">
+        <div class="tag">Casque VR</div>
+        <h3>Je suis le patient</h3>
+        <p>Saisissez le code donné par le thérapeute pour afficher le champ visuel en plein écran dans le casque.</p>
+      </div>
+    </div>
+    <button class="small-link" onclick="openSetupToEdit()" style="margin-top:22px;">⚙ Réglages de connexion</button>
+    <p class="mono" style="text-align:center; color:var(--muted); font-size:11px; margin-top:10px; opacity:0.6;">version 2026-10-10-c</p>
+  </section>
+
+  <!-- ============ CREATE SESSION (therapist pre-screen) ============ -->
+  <section id="createSession" class="screen">
+    <div class="center-card">
+      <h2>Séance créée</h2>
+      <p>Communiquez ce code au dispositif porté par le patient.</p>
+      <div class="code-display mono" id="sessionCodeDisplay">----</div>
+      <input type="text" class="code-input mono" id="pinSetupInput" maxlength="4" placeholder="PIN (optionnel)" style="font-size:18px; padding:10px;" autocomplete="off">
+      <button class="btn btn-primary btn-block" onclick="enterTherapistPanel()">Ouvrir le panneau de pilotage</button>
+      <button class="small-link" onclick="goTo('home')">← Retour</button>
+    </div>
+  </section>
+
+  <!-- ============ LOCK SCREEN ============ -->
+  <section id="lockScreen" class="screen">
+    <div class="center-card">
+      <h2>🔒 Panneau verrouillé</h2>
+      <p>Saisissez le code PIN pour reprendre le contrôle.</p>
+      <input type="text" class="code-input mono" id="pinUnlockInput" maxlength="4" placeholder="----" autocomplete="off">
+      <button class="btn btn-primary btn-block" onclick="unlockTherapistPanel()">Déverrouiller</button>
+      <p id="pinError" style="display:none; color:var(--danger); font-size:13px; margin-top:10px;">PIN incorrect.</p>
+    </div>
+  </section>
+
+  <!-- ============ JOIN SESSION (patient pre-screen) ============ -->
+  <section id="joinSession" class="screen">
+    <div class="center-card">
+      <h2>Rejoindre la séance</h2>
+      <p>Entrez le code affiché sur l'écran du thérapeute.</p>
+      <input type="text" class="code-input mono" id="joinCodeInput" maxlength="4" placeholder="0000" autocomplete="off" autocapitalize="characters">
+      <button class="btn btn-primary btn-block" onclick="joinAsPatient()">Rejoindre</button>
+      <button class="small-link" onclick="goTo('home')">← Retour</button>
+    </div>
+  </section>
+
+  <!-- ============ CREATE SESSION (therapist pre-screen) ============ -->
+  <!-- (PIN field injected below via existing createSession section edit) -->
+
+  <!-- ============ THERAPIST PANEL ============ -->
+  <section id="therapist" class="screen">
+    <div class="t-header">
+      <div class="code-chip mono">Code : <b id="tCodeChip">----</b></div>
+      <div class="t-timer mono" id="tTimer">00:00</div>
+      <button class="btn btn-ghost" style="padding:6px 12px; font-size:12px;" onclick="lockTherapistPanel()">🔒 Verrouiller</button>
+      <div class="status-dot linked" id="tLinkStatus"><i></i><span>Diffusion active</span></div>
+    </div>
+
+    <div class="t-grid">
+      <div class="t-col">
+        <div class="panel">
+          <h3>Aperçu (ce que voit le patient)</h3>
+          <div class="preview-box"><canvas id="previewCanvas"></canvas></div>
+        </div>
+
+        <div class="panel">
+          <h3>Séance</h3>
+          <div class="transport" style="margin-top:0;">
+            <button class="btn btn-secondary" id="playPauseBtn" onclick="togglePlay()">⏸ Mettre en pause</button>
+            <button class="btn btn-danger" onclick="endSession()">Terminer la séance</button>
+          </div>
+          <div class="row" style="align-items:center; margin-top:10px; flex-wrap:nowrap;">
+            <input type="number" id="timerMinutesInput" min="1" max="60" value="5" class="code-input mono"
+              style="width:70px; font-size:16px; padding:6px; margin-bottom:0;">
+            <span style="color:var(--muted); font-size:13px;">min</span>
+            <button class="btn btn-secondary" id="timerToggleBtn" onclick="toggleSessionTimer()" style="padding:8px 12px;">▶ Démarrer</button>
+            <div class="t-timer mono" id="countdownDisplay" style="margin-left:auto;">--:--</div>
+          </div>
+        </div>
+
+        <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:120px;">
+          <h3>Notes de séance <span style="text-transform:none; letter-spacing:normal; font-weight:400;">(non enregistrées — à copier dans votre dossier)</span></h3>
+          <textarea id="sessionNotesArea" placeholder="Observations, tolérance, réglages notables…"
+            style="width:100%; flex:1; min-height:60px; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; color:var(--text);
+            font-family:'IBM Plex Sans',sans-serif; font-size:14px; padding:8px; resize:none;"></textarea>
+          <div style="margin-top:8px;">
+            <button class="btn btn-secondary" style="padding:6px 12px; font-size:13px;" onclick="copySessionNotes()">Copier les notes</button>
+            <span id="copyConfirm" style="display:none; color:var(--ok); font-size:12.5px; margin-left:10px;">Copié ✓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="t-col">
+        <div class="panel">
+          <h3>Motif</h3>
+          <div class="choice-grid cols5" id="patternChoices">
+            <div class="choice" data-pattern="stripes-v">Bandes vert.</div>
+            <div class="choice" data-pattern="stripes-h">Bandes horiz.</div>
+            <div class="choice" data-pattern="dots">Points</div>
+            <div class="choice" data-pattern="checker">Damier</div>
+            <div class="choice" data-pattern="tunnel">Tunnel</div>
+            <div class="choice" data-pattern="target">Cible mobile</div>
+            <div class="choice" data-pattern="stars">Étoiles</div>
+            <div class="choice" data-pattern="text">Texte</div>
+            <div class="choice" data-pattern="waves">Vagues</div>
+            <div class="choice" data-pattern="beat">Au rythme</div>
+          </div>
+
+          <div id="beatRow" style="display:none;">
+            <div class="field" style="margin-bottom:6px;">
+              <label>Rythme (la direction change à chaque bip) <span class="val mono"><span id="beatBpmVal">60</span> bips/min</span></label>
+              <input type="range" id="beatBpmSlider" min="30" max="150" value="60">
+            </div>
+            <div class="toggle-row">
+              <span style="font-size:13px;">Bip sonore dans le casque</span>
+              <div class="switch" id="beatSoundToggle"><div class="knob"></div></div>
+            </div>
+          </div>
+
+          <div id="tunnelDirRow" style="display:none;">
+            <div class="choice-grid" id="tunnelChoices" style="grid-template-columns:repeat(2,1fr); margin-bottom:8px;">
+              <div class="choice" data-tunnel="1">➤ Avant</div>
+              <div class="choice" data-tunnel="-1">➤ Arrière</div>
+            </div>
+          </div>
+
+          <h3 style="margin-top:4px;">Direction <span style="text-transform:none; letter-spacing:normal; font-weight:400;">(combinables)</span></h3>
+          <div class="choice-grid cols6" id="directionChoices" style="margin-bottom:0;">
+            <div class="choice" data-dir="up">↑ Haut</div>
+            <div class="choice" data-dir="down">↓ Bas</div>
+            <div class="choice" data-dir="left">← Gauche</div>
+            <div class="choice" data-dir="right">→ Droite</div>
+            <div class="choice" data-dir="tiltCCW">↺ Incl. G.</div>
+            <div class="choice" data-dir="tiltCW">↻ Incl. D.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Paramètres</h3>
+          <div class="fields2">
+            <div class="field">
+              <label><span id="speedLabel">Vitesse de translation</span> <span class="val mono"><span id="speedVal">20</span> °/s</span></label>
+              <input type="range" id="speedSlider" min="2" max="60" value="20">
+            </div>
+            <div class="field">
+              <label>Vitesse de rotation <span class="val mono"><span id="rotSpeedVal">20</span> °/s</span></label>
+              <input type="range" id="rotSpeedSlider" min="2" max="60" value="20">
+            </div>
+            <div class="field">
+              <label><span id="densityLabel">Densité du motif</span> <span class="val mono" id="densityVal">8</span></label>
+              <input type="range" id="densitySlider" min="3" max="20" value="8">
+            </div>
+            <div class="field">
+              <label>Contraste <span class="val mono"><span id="contrastVal">100</span>%</span></label>
+              <input type="range" id="contrastSlider" min="30" max="100" value="100">
+            </div>
+          </div>
+          <div class="choice-grid" id="colorChoices" style="grid-template-columns:repeat(3,1fr); margin:4px 0 0;">
+            <div class="choice" data-color="bw">Noir / Blanc</div>
+            <div class="choice" data-color="blue-amber">Bleu / Ambre</div>
+            <div class="choice" data-color="blue-yellow">Bleu / Jaune</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Affichage patient</h3>
+          <div class="toggle-row">
+            <span style="font-size:13.5px;">Mode stéréo (casque type Cardboard)</span>
+            <div class="switch" id="stereoToggle" onclick="toggleStereo()"><div class="knob"></div></div>
+          </div>
+          <div class="toggle-row">
+            <span style="font-size:13.5px;">Séance assise (vitesses plafonnées)</span>
+            <div class="switch" id="seatedToggle" onclick="toggleSeated()"><div class="knob"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Éléments hérités (le patient n'a plus de curseur ni d'arrêt) : masqués -->
+    <div style="display:none;">
+      <span id="discomfortVal"></span><div id="discomfortFill"></div>
+      <div id="emergencyBanner"><button onclick="acknowledgeEmergency()"></button></div>
+    </div>
+  </section>
+
+  <!-- ============ PATIENT VIEW ============ -->
+  <section id="patient" class="screen">
+    <div class="patient-overlay" id="patientOverlay">
+      <h2>Prêt pour la séance</h2>
+      <p>Placez le casque, puis passez en plein écran. Le thérapeute contrôle le reste.</p>
+      <button class="btn btn-primary" onclick="startPatientFullscreen()">Passer en plein écran</button>
+      <button class="small-link" onclick="goTo('home')" style="color:var(--muted);">← Retour</button>
+    </div>
+    <div class="status-dot" id="pLinkStatus"><i></i><span id="pLinkText">Connexion…</span></div>
+    <button class="exit-btn" onclick="exitPatientView()">Quitter</button>
+    <div id="pausedBanner" style="display:none; position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:6;
+      background:rgba(0,0,0,0.6); color:#fff; padding:8px 18px; border-radius:999px; font-size:13px; letter-spacing:0.02em;">
+      ⏸ En pause — en attente du thérapeute
+    </div>
+    <div class="stim-wrap" id="stimWrap">
+      <div class="stim-half"><canvas id="canvasL"></canvas></div>
+      <div class="stim-half" id="halfR" style="display:none;"><canvas id="canvasR"></canvas></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ---------------- Storage helpers (relais local en priorité, Firebase sinon) ---------------- */
+const KEY_PREFIX = 'okn-session-';
+const CONFIG_KEY = 'okn-firebase-url';
+
+function isLocalNetwork(){
+  const h = location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' ||
+    h.startsWith('192.168.') || h.startsWith('10.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(h);
+}
+
+function getFirebaseUrl(){
+  return localStorage.getItem(CONFIG_KEY) || '';
+}
+function setFirebaseUrl(url){
+  localStorage.setItem(CONFIG_KEY, url.replace(/\/$/, ''));
+}
+
+async function writeState(code, state){
+  state.updatedAt = Date.now(); // toujours frais, même pour le heartbeat silencieux
+  if(isLocalNetwork()){
+    try{
+      await fetch(`/api/state/${code}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(state)
+      });
+    }catch(e){ console.error('write failed (local)', e); }
+    return;
+  }
+  const base = getFirebaseUrl();
+  if(!base) return;
+  try{
+    await fetch(`${base}/${KEY_PREFIX}${code}.json`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(state)
+    });
+  }catch(e){ console.error('write failed', e); }
+}
+async function readState(code){
+  if(isLocalNetwork()){
+    try{
+      const res = await fetch(`/api/state/${code}?t=${Date.now()}`, {cache: 'no-store'});
+      const data = await res.json();
+      return data || null;
+    }catch(e){ return null; }
+  }
+  const base = getFirebaseUrl();
+  if(!base) return null;
+  try{
+    const res = await fetch(`${base}/${KEY_PREFIX}${code}.json?t=${Date.now()}`, {cache: 'no-store'});
+    const data = await res.json();
+    return data || null;
+  }catch(e){ return null; }
+}
+
+/* ---------------- App state ---------------- */
+let sessionCode = null;
+let role = null; // 'therapist' | 'patient'
+let elapsedTimer = null, elapsedSeconds = 0;
+let pollInterval = null;
+
+const state = {
+  pattern: 'stripes-v',
+  up: false, down: false, left: false, right: true,
+  tiltCW: false, tiltCCW: false,
+  seatedMode: false,
+  emergencyStopAt: 0,
+  tunnelDir: 1,
+  beatBpm: 60, beatSound: true,
+  speed: 20,     // degrees/sec equivalent — translation
+  rotSpeed: 20,  // degrees/sec equivalent — inclinaison / rotation
+  density: 8,
+  contrast: 100,
+  color: 'bw',
+  stereo: false,
+  playing: true,
+  discomfort: null,
+  discomfortAt: 0,
+  updatedAt: Date.now()
+};
+
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function saveFirebaseConfig(){
+  const val = document.getElementById('firebaseUrlInput').value.trim();
+  if(!val.startsWith('https://') || !val.includes('firebasedatabase.app')){
+    document.getElementById('setupError').style.display = 'block';
+    return;
+  }
+  setFirebaseUrl(val);
+  goTo('home');
+}
+
+function openSetupToEdit(){
+  document.getElementById('firebaseUrlInput').value = getFirebaseUrl();
+  document.getElementById('setupError').style.display = 'none';
+  document.getElementById('setupBackBtn').style.display = 'inline';
+  goTo('setupScreen');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if(isLocalNetwork() || getFirebaseUrl()){
+    goTo('home');
+  } else {
+    goTo('setupScreen');
+  }
+});
+
+function genCode(){
+  return String(Math.floor(1000 + Math.random()*9000));
+}
+
+/* ---------------- Therapist flow ---------------- */
+function createSessionFlow(){
+  sessionCode = genCode();
+  document.getElementById('sessionCodeDisplay').textContent = sessionCode;
+}
+
+const originalGoTo = goTo;
+window.goTo = function(id){
+  if(id === 'createSession' && !sessionCode){ createSessionFlow(); }
+  originalGoTo(id);
+};
+
+let therapistPin = '';
+let heartbeatInterval = null;
+
+function enterTherapistPanel(){
+  role = 'therapist';
+  const pinVal = document.getElementById('pinSetupInput').value.trim();
+  if(pinVal) therapistPin = pinVal;
+  document.getElementById('tCodeChip').textContent = sessionCode;
+  goTo('therapist');
+  writeState(sessionCode, state);
+  startTherapistPreview();
+  startTimer();
+  wireControls();
+  watchForPatientEmergency();
+  clearInterval(heartbeatInterval);
+  heartbeatInterval = setInterval(()=> writeState(sessionCode, state), 4000);
+}
+
+function lockTherapistPanel(){
+  document.getElementById('pinUnlockInput').value = '';
+  document.getElementById('pinError').style.display = 'none';
+  goTo('lockScreen');
+}
+function unlockTherapistPanel(){
+  const val = document.getElementById('pinUnlockInput').value.trim();
+  if(!therapistPin || val === therapistPin){
+    goTo('therapist');
+  } else {
+    document.getElementById('pinError').style.display = 'block';
+  }
+}
+
+function startTimer(){
+  elapsedSeconds = 0;
+  updateTimerDisplay();
+  elapsedTimer = setInterval(()=>{
+    elapsedSeconds++;
+    updateTimerDisplay();
+  }, 1000);
+}
+function updateTimerDisplay(){
+  const m = String(Math.floor(elapsedSeconds/60)).padStart(2,'0');
+  const s = String(elapsedSeconds%60).padStart(2,'0');
+  document.getElementById('tTimer').textContent = `${m}:${s}`;
+}
+
+/* ---------------- Minuteur programmable + alerte sonore ---------------- */
+let countdownInterval = null, countdownRemaining = 0, countdownRunning = false;
+function toggleSessionTimer(){
+  if(countdownRunning){
+    clearInterval(countdownInterval);
+    countdownRunning = false;
+    document.getElementById('timerToggleBtn').textContent = '▶ Démarrer';
+    return;
+  }
+  const minutes = parseInt(document.getElementById('timerMinutesInput').value) || 5;
+  countdownRemaining = minutes * 60;
+  countdownRunning = true;
+  document.getElementById('timerToggleBtn').textContent = '⏹ Arrêter';
+  updateCountdownDisplay();
+  countdownInterval = setInterval(()=>{
+    countdownRemaining--;
+    updateCountdownDisplay();
+    if(countdownRemaining <= 0){
+      clearInterval(countdownInterval);
+      countdownRunning = false;
+      document.getElementById('timerToggleBtn').textContent = '▶ Démarrer';
+      playBeep();
+    }
+  }, 1000);
+}
+function updateCountdownDisplay(){
+  const m = String(Math.max(0,Math.floor(countdownRemaining/60))).padStart(2,'0');
+  const s = String(Math.max(0,countdownRemaining%60)).padStart(2,'0');
+  document.getElementById('countdownDisplay').textContent = `${m}:${s}`;
+}
+function playBeep(){
+  try{
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    [0, 0.35, 0.7].forEach((t)=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.25, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.32);
+    });
+  }catch(e){ /* audio non disponible */ }
+}
+
+/* ---------------- Notes de séance (non persistées) ---------------- */
+function copySessionNotes(){
+  const text = document.getElementById('sessionNotesArea').value;
+  navigator.clipboard.writeText(text).then(()=>{
+    const conf = document.getElementById('copyConfirm');
+    conf.style.display = 'inline';
+    setTimeout(()=> conf.style.display = 'none', 2000);
+  }).catch(()=>{});
+}
+
+function wireControls(){
+  document.querySelectorAll('#patternChoices .choice').forEach(el=>{
+    el.onclick = ()=>{ state.pattern = el.dataset.pattern; syncUI(); pushState(); };
+  });
+  document.querySelectorAll('#tunnelChoices .choice').forEach(el=>{
+    el.onclick = ()=>{ state.tunnelDir = parseInt(el.dataset.tunnel); syncUI(); pushState(); };
+  });
+  const axisPairs = { up:'down', down:'up', left:'right', right:'left', tiltCCW:'tiltCW', tiltCW:'tiltCCW' };
+  document.querySelectorAll('#directionChoices .choice').forEach(el=>{
+    el.onclick = ()=>{
+      const key = el.dataset.dir;
+      state[key] = !state[key];
+      if(state[key]) state[axisPairs[key]] = false; // un seul sens actif par axe
+      syncUI(); pushState();
+    };
+  });
+  document.querySelectorAll('#colorChoices .choice').forEach(el=>{
+    el.onclick = ()=>{ state.color = el.dataset.color; syncUI(); pushState(); };
+  });
+  document.getElementById('speedSlider').oninput = (e)=>{
+    state.speed = parseInt(e.target.value);
+    document.getElementById('speedVal').textContent = state.speed;
+    pushState();
+  };
+  document.getElementById('rotSpeedSlider').oninput = (e)=>{
+    state.rotSpeed = parseInt(e.target.value);
+    document.getElementById('rotSpeedVal').textContent = state.rotSpeed;
+    pushState();
+  };
+  document.getElementById('densitySlider').oninput = (e)=>{
+    state.density = parseInt(e.target.value);
+    document.getElementById('densityVal').textContent = state.density;
+    pushState();
+  };
+  document.getElementById('beatBpmSlider').oninput = (e)=>{
+    state.beatBpm = parseInt(e.target.value);
+    syncUI(); pushState();
+  };
+  document.getElementById('beatSoundToggle').onclick = ()=>{
+    state.beatSound = !state.beatSound; syncUI(); pushState();
+  };
+  document.getElementById('contrastSlider').oninput = (e)=>{
+    state.contrast = parseInt(e.target.value);
+    document.getElementById('contrastVal').textContent = state.contrast;
+    pushState();
+  };
+  syncUI();
+}
+
+function syncUI(){
+  document.querySelectorAll('#patternChoices .choice').forEach(el=>{
+    el.classList.toggle('active', el.dataset.pattern === state.pattern);
+  });
+  document.getElementById('tunnelDirRow').style.display = (state.pattern === 'tunnel' || state.pattern === 'stars') ? 'block' : 'none';
+  document.getElementById('beatRow').style.display = state.pattern === 'beat' ? 'block' : 'none';
+  document.getElementById('beatBpmSlider').value = state.beatBpm;
+  document.getElementById('beatBpmVal').textContent = state.beatBpm;
+  document.getElementById('beatSoundToggle').classList.toggle('on', !!state.beatSound);
+  document.querySelectorAll('#tunnelChoices .choice').forEach(el=>{
+    el.classList.toggle('active', parseInt(el.dataset.tunnel) === state.tunnelDir);
+  });
+  document.querySelectorAll('#directionChoices .choice').forEach(el=>{
+    el.classList.toggle('active', !!state[el.dataset.dir]);
+  });
+  document.querySelectorAll('#colorChoices .choice').forEach(el=>{
+    el.classList.toggle('active', el.dataset.color === state.color);
+  });
+  const speedSlider = document.getElementById('speedSlider');
+  speedSlider.max = state.seatedMode ? SEATED_SPEED_CAP : 60;
+  speedSlider.value = state.speed;
+  document.getElementById('speedVal').textContent = state.speed;
+  const rotSpeedSlider = document.getElementById('rotSpeedSlider');
+  rotSpeedSlider.max = state.seatedMode ? SEATED_SPEED_CAP : 60;
+  rotSpeedSlider.value = state.rotSpeed;
+  document.getElementById('rotSpeedVal').textContent = state.rotSpeed;
+  document.getElementById('speedLabel').textContent = state.pattern === 'target' ? 'Vitesse de poursuite' : 'Vitesse de translation';
+  document.getElementById('densityLabel').textContent = state.pattern === 'target' ? 'Taille de la cible' : state.pattern === 'text' ? 'Taille du texte' : state.pattern === 'waves' ? 'Nombre de vagues' : state.pattern === 'stars' ? 'Nombre d\'étoiles' : 'Densité du motif';
+  document.getElementById('densitySlider').value = state.density;
+  document.getElementById('densityVal').textContent = state.density;
+  document.getElementById('contrastSlider').value = state.contrast;
+  document.getElementById('contrastVal').textContent = state.contrast;
+  document.getElementById('stereoToggle').classList.toggle('on', state.stereo);
+  document.getElementById('seatedToggle').classList.toggle('on', !!state.seatedMode);
+  document.getElementById('playPauseBtn').textContent = state.playing ? '⏸ Mettre en pause' : '▶ Reprendre';
+  updateDiscomfortDisplay();
+}
+
+function updateDiscomfortDisplay(){
+  const el = document.getElementById('discomfortVal');
+  const fill = document.getElementById('discomfortFill');
+  if(!el || !fill) return;
+  if(state.discomfort === null || state.discomfort === undefined){
+    el.textContent = '—'; fill.style.width = '0%'; fill.style.background = 'var(--muted)';
+    return;
+  }
+  el.textContent = state.discomfort;
+  fill.style.width = (state.discomfort*10) + '%';
+  fill.style.background = state.discomfort >= 7 ? 'var(--danger)' : (state.discomfort >= 4 ? 'var(--gold)' : 'var(--ok)');
+}
+
+let pushTimeout = null;
+function pushState(){
+  state.updatedAt = Date.now();
+  clearTimeout(pushTimeout);
+  pushTimeout = setTimeout(()=> writeState(sessionCode, state), 80);
+}
+
+const SEATED_SPEED_CAP = 15;
+
+function toggleSeated(){
+  state.seatedMode = !state.seatedMode;
+  if(state.seatedMode && state.speed > SEATED_SPEED_CAP){
+    state.speed = SEATED_SPEED_CAP;
+  }
+  syncUI();
+  pushState();
+}
+
+function toggleStereo(){
+  state.stereo = !state.stereo;
+  syncUI();
+  pushState();
+}
+function togglePlay(){
+  state.playing = !state.playing;
+  syncUI();
+  pushState();
+}
+function endSession(){
+  state.playing = false;
+  pushState();
+  clearInterval(elapsedTimer);
+  clearInterval(emergencyWatch);
+  clearInterval(heartbeatInterval);
+  clearInterval(countdownInterval);
+  countdownRunning = false;
+  sessionCode = null;
+  goTo('home');
+}
+
+let ackEmergencyAt = 0;
+let emergencyWatch = null;
+function watchForPatientEmergency(){
+  clearInterval(emergencyWatch);
+  emergencyWatch = setInterval(async ()=>{
+    const remote = await readState(sessionCode);
+    if(!remote) return;
+    if(remote.emergencyStopAt && remote.emergencyStopAt > ackEmergencyAt){
+      state.playing = false;
+      state.emergencyStopAt = remote.emergencyStopAt; // évite d'écraser cette valeur à la prochaine écriture
+      syncUI();
+      document.getElementById('emergencyBanner').style.display = 'block';
+    }
+    if(remote.discomfort !== null && remote.discomfort !== undefined && remote.discomfortAt >= (state.discomfortAt||0)){
+      state.discomfort = remote.discomfort;
+      state.discomfortAt = remote.discomfortAt;
+      updateDiscomfortDisplay();
+    }
+  }, 1000);
+}
+
+function acknowledgeEmergency(){
+  ackEmergencyAt = Date.now();
+  document.getElementById('emergencyBanner').style.display = 'none';
+}
+
+/* ---------------- Patient flow ---------------- */
+function joinAsPatient(){
+  const val = document.getElementById('joinCodeInput').value.trim();
+  if(val.length !== 4){ return; }
+  sessionCode = val;
+  role = 'patient';
+  goTo('patient');
+  startPatientSync();
+  startPatientExtras();
+}
+
+let wakeLock = null;
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  }catch(e){ /* non supporté ou refusé : on continue sans */ }
+}
+document.addEventListener('visibilitychange', async ()=>{
+  // Le verrou est automatiquement relâché par le navigateur quand l'app passe en arrière-plan ;
+  // on le redemande dès qu'elle redevient visible pendant une séance patient en cours.
+  if(document.visibilityState === 'visible' && role === 'patient' && sessionCode){
+    await requestWakeLock();
+  }
+});
+
+function startPatientFullscreen(){
+  const el = document.getElementById('app');
+  if(el.requestFullscreen){ el.requestFullscreen().catch(()=>{}); }
+  document.getElementById('patientOverlay').style.display = 'none';
+  requestWakeLock();
+  try{
+    patientAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    patientAudioCtx.resume();
+  }catch(e){ /* audio indisponible : le métronome restera muet */ }
+}
+function exitPatientView(){
+  if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); }
+  if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
+  clearInterval(pollInterval);
+  stopPatientExtras();
+  sessionCode = null;
+  goTo('home');
+  document.getElementById('patientOverlay').style.display = 'flex';
+}
+
+/* ---- Extras patient : bip du mode « Direction au rythme » ---- */
+let patientAudioCtx = null;
+let metroInterval = null, nextBeatAt = 0;
+
+function playTick(){
+  if(!patientAudioCtx) return;
+  try{
+    const ctx = patientAudioCtx;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.value = 1000;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.09);
+  }catch(e){}
+}
+
+function startPatientExtras(){
+  stopPatientExtras();
+  nextBeatAt = 0;
+  metroInterval = setInterval(()=>{
+    const on = sessionCode && state.playing && state.pattern === 'beat' && state.beatSound;
+    if(!on){ nextBeatAt = 0; return; }
+    const now = performance.now(), period = 60000 / Math.max(1, state.beatBpm);
+    if(!nextBeatAt) nextBeatAt = now;
+    if(now >= nextBeatAt){
+      playTick();
+      nextBeatAt += period;
+      if(nextBeatAt < now) nextBeatAt = now + period;
+    }
+  }, 30);
+}
+function stopPatientExtras(){
+  clearInterval(metroInterval);
+}
+
+const CONNECTION_STALE_MS = 7000;
+let lastFetchOkAt = 0;
+function startPatientSync(){
+  clearInterval(pollInterval);
+  lastFetchOkAt = 0;
+  pollInterval = setInterval(async ()=>{
+    const remote = await readState(sessionCode);
+    if(remote){
+      lastFetchOkAt = Date.now(); // horloge du patient uniquement : pas de comparaison entre appareils
+      const myStopAt = state.emergencyStopAt || 0;
+      Object.assign(state, remote);
+      // Ne jamais laisser une mise à jour distante annuler un arrêt d'urgence local plus récent
+      if(myStopAt > (remote.emergencyStopAt || 0)){ state.emergencyStopAt = myStopAt; state.playing = false; }
+      applyStereoLayout();
+      document.getElementById('pausedBanner').style.display = state.playing ? 'none' : 'block';
+    }
+    const fresh = lastFetchOkAt && (Date.now() - lastFetchOkAt) < CONNECTION_STALE_MS;
+    const statusEl = document.getElementById('pLinkStatus');
+    if(fresh){
+      statusEl.classList.add('linked');
+      document.getElementById('pLinkText').textContent = 'Connecté au thérapeute';
+    } else if(lastFetchOkAt){
+      statusEl.classList.remove('linked');
+      document.getElementById('pLinkText').textContent = 'Signal instable…';
+    } else {
+      statusEl.classList.remove('linked');
+      document.getElementById('pLinkText').textContent = 'En attente du thérapeute…';
+    }
+  }, 300);
+}
+
+function triggerPatientEmergencyStop(){
+  state.playing = false;
+  state.emergencyStopAt = Date.now();
+  document.getElementById('pausedBanner').style.display = 'block';
+  writeState(sessionCode, state);
+}
+
+function applyStereoLayout(){
+  document.getElementById('halfR').style.display = state.stereo ? 'block' : 'none';
+}
+
+/* ---------------- Rendering engine (shared by preview + patient) ---------------- */
+function colorsFor(scheme, contrast){
+  const alpha = contrast/100;
+  if(scheme === 'blue-amber'){
+    return { a: `rgba(15,25,40,${alpha})`, b: `rgba(217,164,65,${alpha})` };
+  }
+  if(scheme === 'blue-yellow'){
+    return { a: `rgba(10,20,60,${alpha})`, b: `rgba(255,210,0,${alpha})` };
+  }
+  return { a: `rgba(5,5,5,${alpha})`, b: `rgba(245,245,245,${alpha})` };
+}
+function baseColorsRGB(scheme){
+  if(scheme === 'blue-amber') return { bg: '15,25,40', fg: '217,164,65' };
+  if(scheme === 'blue-yellow') return { bg: '10,20,60', fg: '255,210,0' };
+  return { bg: '5,5,5', fg: '245,245,245' };
+}
+
+const TEXT_SAMPLE = "Le matin, le village s'éveille doucement. Les volets s'ouvrent un à un, l'odeur du pain chaud flotte dans la rue et les premiers passants se saluent d'un signe de la main. Au bord de la rivière, un pêcheur installe sa canne et regarde le soleil monter derrière les collines. Plus loin, des enfants courent vers l'école en riant, leurs cartables rebondissant sur leur dos. La journée peut commencer. ";
+function drawFrame(ctx, w, h, t, s){
+  const {a,b} = colorsFor(s.color, s.contrast);
+  ctx.fillStyle = a;
+  ctx.fillRect(0,0,w,h);
+
+  const speedPx = s.speed * 2.2; // px/sec scaling
+  const dirX = (s.right ? 1 : 0) - (s.left ? 1 : 0);
+  const dirY = (s.down ? 1 : 0) - (s.up ? 1 : 0);
+  const rotDir = (s.tiltCW ? 1 : 0) - (s.tiltCCW ? 1 : 0);
+  const offsetX = (t/1000) * speedPx * dirX;
+  const offsetY = (t/1000) * speedPx * dirY;
+  const rotAngle = rotDir ? (t/1000) * s.rotSpeed * rotDir * (Math.PI/180) : 0;
+
+  ctx.save();
+  const cx0 = w/2, cy0 = h/2;
+  if(rotDir && !['tunnel','target','stars','waves','beat'].includes(s.pattern)){
+    // Surdimensionne le motif pour que la rotation ne laisse jamais de bord vide
+    ctx.translate(w/2, h/2);
+    ctx.rotate(rotAngle);
+    ctx.translate(-w/2, -h/2);
+    const pad = Math.hypot(w,h) * 0.5;
+    ctx.translate(-pad/2, -pad/2);
+    w += pad; h += pad;
+  }
+
+  if(s.pattern === 'target'){
+    const { fg } = baseColorsRGB(s.color);
+    const ampX = (w/2) * 0.7, ampY = (h/2) * 0.7;
+    const freq = 0.1 + (s.speed/60) * 0.5;
+    let tx = cx0, ty = cy0;
+    if(rotDir){
+      const orbitR = Math.min(w,h) * 0.28;
+      const ang = (t/1000) * s.rotSpeed * rotDir * (Math.PI/180);
+      tx = cx0 + Math.cos(ang) * orbitR;
+      ty = cy0 + Math.sin(ang) * orbitR;
+    } else {
+      if(dirX !== 0) tx = cx0 + Math.sin((t/1000)*freq*2*Math.PI) * ampX * dirX;
+      if(dirY !== 0) ty = cy0 + Math.sin((t/1000)*freq*2*Math.PI) * ampY * dirY;
+    }
+    const r = Math.max(6, Math.min(w,h) * (0.01 + s.density*0.008));
+    const alpha = s.contrast/100;
+    ctx.fillStyle = `rgba(${fg},${alpha})`;
+    ctx.beginPath();
+    ctx.arc(tx, ty, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${fg},${alpha*0.5})`;
+    ctx.lineWidth = Math.max(1, r*0.15);
+    ctx.beginPath(); ctx.moveTo(tx-r*1.8, ty); ctx.lineTo(tx+r*1.8, ty); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx, ty-r*1.8); ctx.lineTo(tx, ty+r*1.8); ctx.stroke();
+  } else if(s.pattern === 'stars'){
+    const { bg, fg } = baseColorsRGB(s.color);
+    const dir = s.tunnelDir || 1;
+    const maxR = Math.hypot(w,h) / 2 * 1.05;
+    const ampY = Math.min(w,h) * 0.22, ampX = Math.min(w,h) * 0.22;
+    const fq = 0.15 + (s.speed/60) * 0.6;
+    const cx = cx0 + (dirX !== 0 ? Math.sin((t/1000)*fq*2*Math.PI) * ampX * dirX : 0);
+    const cy = cy0 + (dirY !== 0 ? Math.sin((t/1000)*fq*2*Math.PI) * ampY * dirY : 0);
+    const N = s.density * 30;
+    const timeShift = (t/1000) * (s.speed/30) * dir;
+    const hash = (n)=>{ const x = Math.sin(n*127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    ctx.lineCap = 'round';
+    for(let i = 0; i < N; i++){
+      const ang = hash(i) * Math.PI * 2, spread = 0.15 + 0.85 * hash(i + 1000);
+      const z = (((hash(i + 2000) + timeShift) % 1) + 1) % 1;
+      const pos = (zz)=> maxR * spread * Math.pow(zz, 2.2);
+      const r1 = pos(z), r0 = pos(Math.max(0, z - 0.025 * Math.min(3, 0.5 + s.speed/20)));
+      const cs = Math.cos(ang), sn = Math.sin(ang);
+      ctx.strokeStyle = `rgba(${fg},${(0.15 + 0.85*z) * (s.contrast/100)})`;
+      ctx.lineWidth = 0.6 + 2.6 * z;
+      ctx.beginPath();
+      ctx.moveTo(cx + cs*r0, cy + sn*r0);
+      ctx.lineTo(cx + cs*r1, cy + sn*r1);
+      ctx.stroke();
+    }
+  } else if(s.pattern === 'text'){
+    const fs = Math.max(14, Math.min(w,h) * (0.03 + s.density * 0.006));
+    ctx.font = `${fs}px system-ui, sans-serif`;
+    ctx.textBaseline = 'middle'; ctx.fillStyle = b;
+    const horizontal = dirX !== 0 && dirY === 0;
+    if(horizontal){
+      const line = TEXT_SAMPLE.replace(/\s+/g, ' ') + '   •   ';
+      const lw = ctx.measureText(line).width;
+      const off = (((offsetX % lw) + lw) % lw);
+      [0.34, 0.5, 0.66].forEach((fy, idx)=>{
+        for(let x = -lw + off - idx*lw*0.3; x < w; x += lw) ctx.fillText(line, x, h*fy);
+      });
+    } else {
+      const maxW = w * 0.8;
+      const key = Math.round(maxW) + '|' + Math.round(fs);
+      if(drawFrame._textKey !== key){
+        const words = TEXT_SAMPLE.split(/\s+/); const lines = []; let cur = '';
+        words.forEach(wd=>{
+          const test = cur ? cur + ' ' + wd : wd;
+          if(ctx.measureText(test).width > maxW && cur){ lines.push(cur); cur = wd; } else cur = test;
+        });
+        if(cur) lines.push(cur);
+        drawFrame._textKey = key; drawFrame._textLines = lines;
+      }
+      const lines = drawFrame._textLines, lh = fs * 1.5, blockH = lines.length * lh;
+      const dy = dirY !== 0 ? offsetY : -(t/1000) * speedPx; // par défaut : défilement vers le haut
+      const off = (((dy % blockH) + blockH) % blockH);
+      ctx.textAlign = 'center';
+      for(let rep = -1; rep <= Math.ceil(h/blockH); rep++){
+        lines.forEach((ln, i)=> ctx.fillText(ln, w/2, rep*blockH + i*lh + off));
+      }
+      ctx.textAlign = 'start';
+    }
+  } else if(s.pattern === 'waves'){
+    const roll = rotDir ? Math.sin((t/1000) * (0.1 + s.rotSpeed/60*0.5) * 2*Math.PI) * 0.21 * rotDir : 0;
+    const heave = dirY !== 0 ? Math.sin((t/1000) * (0.1 + s.speed/60*0.5) * 2*Math.PI) * h * 0.06 * dirY : 0;
+    const n = Math.max(3, s.density);
+    const phase = (t/1000) * s.speed * 0.05 * (dirX || 1);
+    ctx.save();
+    ctx.translate(cx0, cy0); ctx.rotate(roll); ctx.translate(-cx0, -cy0);
+    const horizon = h * 0.42 + heave, span = h * 1.6 - horizon;
+    for(let j = 0; j < n; j++){
+      const f = j / n, y0 = horizon + span * Math.pow(f, 1.4);
+      const A = 3 + f * h * 0.05, k = (2*Math.PI) / (w * (0.5 - 0.35*f));
+      ctx.fillStyle = (j % 2) ? b : a;
+      ctx.beginPath();
+      ctx.moveTo(-w, h*3);
+      for(let x = -w; x <= 2*w; x += 10) ctx.lineTo(x, y0 + A * Math.sin(k*x + phase*(1 + f) + j));
+      ctx.lineTo(2*w, h*3);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  } else if(s.pattern === 'beat'){
+    const { fg } = baseColorsRGB(s.color);
+    const period = 60000 / Math.max(1, s.beatBpm);
+    const V = {up:[0,-1], right:[1,0], down:[0,1], left:[-1,0]};
+    let list = ['up','right','down','left'].filter(k=> s[k]).map(k=> V[k]);
+    if(list.length === 0) list = [V.left, V.right];
+    if(list.length === 1) list = [list[0], [-list[0][0], -list[0][1]]];
+    const idx = Math.floor(t / period), prog = (t - idx*period) / period;
+    const cycles = Math.floor(idx / list.length), rem = idx % list.length;
+    let px = 0, py = 0;
+    list.forEach(v=>{ px += v[0]*cycles; py += v[1]*cycles; });
+    for(let i = 0; i < rem; i++){ px += list[i][0]; py += list[i][1]; }
+    const cur = list[rem], e = prog < 0.5 ? 2*prog*prog : 1 - Math.pow(-2*prog + 2, 2)/2;
+    px += cur[0]*e; py += cur[1]*e;
+    const spacing = Math.max(w,h) / s.density;
+    const D = Math.max(0.2, s.speed/10) * spacing * 0.5; // déplacement par bip
+    const offX = (((px*D) % spacing) + spacing) % spacing, offY = (((py*D) % spacing) + spacing) % spacing;
+    ctx.fillStyle = b;
+    const r = spacing * 0.2;
+    for(let y = -spacing + offY; y < h + spacing; y += spacing){
+      for(let x = -spacing + offX; x < w + spacing; x += spacing){
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    // Repère central : flèche de la direction en cours + anneau qui pulse à chaque bip
+    const R = Math.min(w,h) * 0.07, al = s.contrast/100;
+    ctx.fillStyle = `rgba(${fg},${al})`;
+    ctx.strokeStyle = `rgba(${fg},${al * (1 - prog)})`;
+    ctx.lineWidth = Math.max(2, R*0.15);
+    ctx.beginPath(); ctx.arc(cx0, cy0, R*(1 + prog*0.8), 0, Math.PI*2); ctx.stroke();
+    ctx.save(); ctx.translate(cx0, cy0); ctx.rotate(Math.atan2(cur[1], cur[0]));
+    ctx.beginPath(); ctx.moveTo(R*0.7, 0); ctx.lineTo(-R*0.4, -R*0.5); ctx.lineTo(-R*0.4, R*0.5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else if(s.pattern === 'tunnel'){
+    const maxR = Math.hypot(w,h) / 2 * 1.05;
+    const density = s.density;
+    const dir = s.tunnelDir || 1;
+    const ampY = Math.min(w,h) * 0.22;
+    const freqY = 0.15 + (s.speed/60) * 0.6;
+    const cyShift = dirY !== 0 ? Math.sin((t/1000)*freqY*2*Math.PI) * ampY * dirY : 0;
+    const cyTunnel = cy0 + cyShift;
+    const { bg, fg } = baseColorsRGB(s.color);
+
+    // Dégradé radial : renforce la sensation de profondeur (centre plus sombre = plus loin)
+    const grad = ctx.createRadialGradient(cx0, cyTunnel, 0, cx0, cyTunnel, maxR);
+    grad.addColorStop(0, `rgba(${bg},0.6)`);
+    grad.addColorStop(1, `rgba(${bg},0.05)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    const timeShift = (t/1000) * (s.speed/25) * dir;
+    for(let k = 0; k <= density; k++){
+      const dNorm = (((k/density) + timeShift) % 1 + 1) % 1;
+      // Espacement non linéaire : anneaux lointains resserrés, anneaux proches très espacés (vraie perspective)
+      const radius = maxR * Math.pow(dNorm, 0.55);
+      if(radius < 1) continue;
+      const alpha = (0.10 + 0.9*dNorm) * (s.contrast/100);
+      ctx.strokeStyle = `rgba(${fg},${alpha})`;
+      ctx.lineWidth = Math.max(1, (maxR/density) * 0.16 * (0.3 + 0.7*dNorm));
+      ctx.beginPath();
+      ctx.arc(cx0, cyTunnel, radius, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  } else if(s.pattern === 'stripes-v' || s.pattern === 'stripes-h'){
+    const spacing = Math.max(w,h) / s.density;
+    ctx.fillStyle = b;
+    if(s.pattern === 'stripes-v'){
+      let start = ((offsetX % (spacing*2)) + spacing*2) % (spacing*2) - spacing*2;
+      for(let x = start; x < w + spacing*2; x += spacing*2){
+        ctx.fillRect(x, 0, spacing, h);
+      }
+    } else {
+      let start = ((offsetY % (spacing*2)) + spacing*2) % (spacing*2) - spacing*2;
+      for(let y = start; y < h + spacing*2; y += spacing*2){
+        ctx.fillRect(0, y, w, spacing);
+      }
+    }
+  } else if(s.pattern === 'dots'){
+    const spacing = Math.max(w,h) / s.density;
+    const r = spacing * 0.22;
+    ctx.fillStyle = b;
+    let offX = ((offsetX % spacing) + spacing) % spacing;
+    let offY = ((offsetY % spacing) + spacing) % spacing;
+    for(let y = -spacing + offY; y < h + spacing; y += spacing){
+      for(let x = -spacing + offX; x < w + spacing; x += spacing){
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  } else if(s.pattern === 'checker'){
+    const spacing = Math.max(w,h) / s.density;
+    let offX = ((offsetX % (spacing*2)) + spacing*2) % (spacing*2);
+    let offY = ((offsetY % spacing) + spacing) % spacing;
+    ctx.fillStyle = b;
+    for(let y = -spacing*2 + offY; y < h + spacing*2; y += spacing){
+      for(let x = -spacing*2 + offX; x < w + spacing*2; x += spacing*2){
+        const row = Math.round((y-offY)/spacing);
+        const cx = row % 2 === 0 ? x : x + spacing;
+        ctx.fillRect(cx, y, spacing, spacing);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function setupCanvas(canvas){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+
+/* Preview loop (therapist) */
+let previewCtx, previewStart = null;
+function startTherapistPreview(){
+  const canvas = document.getElementById('previewCanvas');
+  previewCtx = setupCanvas(canvas);
+  window.addEventListener('resize', ()=>{ previewCtx = setupCanvas(canvas); });
+  requestAnimationFrame(previewLoop);
+}
+function previewLoop(ts){
+  if(previewStart === null) previewStart = ts;
+  const t = state.playing ? (ts - previewStart) : (previewLoop._frozenT || 0);
+  if(state.playing) previewLoop._frozenT = t;
+  const canvas = document.getElementById('previewCanvas');
+  const rect = canvas.getBoundingClientRect();
+  if(previewCtx) drawFrame(previewCtx, rect.width, rect.height, t, state);
+  if(document.getElementById('therapist').classList.contains('active')){
+    requestAnimationFrame(previewLoop);
+  }
+}
+
+/* Patient loop */
+let ctxL, ctxR, patientStart = null, frozenT = 0;
+function startPatientRendering(){
+  const cL = document.getElementById('canvasL');
+  const cR = document.getElementById('canvasR');
+  ctxL = setupCanvas(cL);
+  ctxR = setupCanvas(cR);
+  window.addEventListener('resize', ()=>{ ctxL = setupCanvas(cL); ctxR = setupCanvas(cR); });
+  requestAnimationFrame(patientLoop);
+}
+function patientLoop(ts){
+  if(patientStart === null) patientStart = ts;
+  if(state.playing){ frozenT = ts - patientStart; } else { patientStart = ts - frozenT; }
+  const cL = document.getElementById('canvasL');
+  const rectL = cL.getBoundingClientRect();
+  if(ctxL) drawFrame(ctxL, rectL.width, rectL.height, frozenT, state);
+  if(state.stereo){
+    const cR = document.getElementById('canvasR');
+    const rectR = cR.getBoundingClientRect();
+    if(ctxR) drawFrame(ctxR, rectR.width, rectR.height, frozenT, state);
+  }
+  requestAnimationFrame(patientLoop);
+}
+startPatientRendering();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').then((reg)=>{
+      reg.update(); // vérifie immédiatement s'il existe une version plus récente
+    }).catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
