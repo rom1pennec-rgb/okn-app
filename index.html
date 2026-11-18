@@ -143,7 +143,11 @@
   .t-col{display:block;}
   .fields2{display:grid; grid-template-columns:1fr 1fr; gap:6px 18px;}
   .fields2 .field{margin-bottom:6px;}
-  .choice-grid.cols5{grid-template-columns:repeat(5,1fr);}
+  .choice-grid.cols5{grid-template-columns:repeat(3,1fr);}
+  #recapModal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:60; align-items:center; justify-content:center; padding:16px;}
+  #recapModal.show{display:flex;}
+  .recap-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; max-width:600px; width:100%; max-height:92vh; display:flex; flex-direction:column; gap:12px;}
+  .recap-box pre{white-space:pre-wrap; overflow:auto; font-size:13px; line-height:1.5; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:12px; margin:0; flex:1;}
   .choice-grid.cols6{grid-template-columns:repeat(3,1fr);}
   @media(min-width:900px){
     #therapist.active{height:100vh; overflow:auto; padding:8px 14px 10px;}
@@ -155,7 +159,7 @@
     .preview-box{width:min(100%, calc(30vh * 1.7778)); margin:0 auto;}
     .choice{padding:8px 4px; font-size:12.5px;}
     .choice-grid{margin-bottom:10px; gap:6px;}
-    .choice-grid.cols6{grid-template-columns:repeat(6,1fr);}
+    .choice-grid.cols6, .choice-grid.cols5{grid-template-columns:repeat(6,1fr);}
     .toggle-row{padding:2px 0;}
   }
   .visually-hidden{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
@@ -211,7 +215,7 @@
     </div>
     <div id="modeInfo" class="disclaimer" style="margin-top:22px; font-size:12.5px;"></div>
     <button class="small-link" onclick="openSetupToEdit()" style="margin-top:22px;">⚙ Réglages de connexion</button>
-    <p class="mono" style="text-align:center; color:var(--muted); font-size:11px; margin-top:10px; opacity:0.6;">version 2026-10-10-d</p>
+    <p class="mono" style="text-align:center; color:var(--muted); font-size:11px; margin-top:10px; opacity:0.6;">version 2026-11-18-a</p>
   </section>
 
   <!-- ============ CREATE SESSION (therapist pre-screen) ============ -->
@@ -308,6 +312,27 @@
             <div class="choice" data-pattern="text">Texte</div>
             <div class="choice" data-pattern="waves">Vagues</div>
             <div class="choice" data-pattern="beat">Au rythme</div>
+            <div class="choice" data-pattern="svv">Vertic. visuelle</div>
+          </div>
+
+          <div id="svvRow" style="display:none;">
+            <div class="field" style="margin-bottom:4px;">
+              <label>Angle de la ligne <span class="val mono"><span id="svvAngleVal">0</span>°</span> <span style="color:var(--muted); font-size:11px;">(+ = sens horaire)</span></label>
+              <input type="range" id="svvAngleSlider" min="-30" max="30" step="0.5" value="0">
+            </div>
+            <div class="row" style="gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+              <button class="btn btn-secondary" style="padding:5px 10px; font-size:12.5px;" onclick="svvNudge(-1)">−1°</button>
+              <button class="btn btn-secondary" style="padding:5px 10px; font-size:12.5px;" onclick="svvNudge(-0.5)">−0,5°</button>
+              <button class="btn btn-secondary" style="padding:5px 10px; font-size:12.5px;" onclick="svvNudge(0.5)">+0,5°</button>
+              <button class="btn btn-secondary" style="padding:5px 10px; font-size:12.5px;" onclick="svvNudge(1)">+1°</button>
+              <button class="btn btn-secondary" style="padding:5px 10px; font-size:12.5px;" onclick="svvRandom()">Angle aléatoire</button>
+              <button class="btn btn-primary" style="padding:5px 10px; font-size:12.5px;" onclick="svvRecord()">Enregistrer</button>
+            </div>
+            <div class="toggle-row">
+              <span style="font-size:13px;">Fond de points en rotation (réglé par « Vitesse de rotation » et Inclinaison)</span>
+              <div class="switch" id="svvBgToggle"><div class="knob"></div></div>
+            </div>
+            <div id="svvList" class="mono" style="font-size:12px; color:var(--muted); margin:4px 0 8px;">Aucune mesure enregistrée.</div>
           </div>
 
           <div id="beatRow" style="display:none;">
@@ -380,7 +405,19 @@
       </div>
     </div>
 
-    <!-- Éléments hérités (le patient n'a plus de curseur ni d'arrêt) : masqués -->
+    <div id="recapModal">
+    <div class="recap-box">
+      <h2 style="margin:0; font-size:18px;">Bilan de séance</h2>
+      <pre id="recapText"></pre>
+      <div class="row" style="gap:8px;">
+        <button class="btn btn-secondary" onclick="copyRecap()">Copier le bilan</button>
+        <span id="recapCopied" style="display:none; color:var(--ok); font-size:12.5px; align-self:center;">Copié ✓</span>
+        <button class="btn btn-primary" style="margin-left:auto;" onclick="closeRecap()">Fermer et quitter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Éléments hérités (le patient n'a plus de curseur ni d'arrêt) : masqués -->
     <div style="display:none;">
       <span id="discomfortVal"></span><div id="discomfortFill"></div>
       <div id="emergencyBanner"><button onclick="acknowledgeEmergency()"></button></div>
@@ -490,6 +527,7 @@ const state = {
   emergencyStopAt: 0,
   tunnelDir: 1,
   beatBpm: 60, beatSound: true,
+  svvAngle: 0, svvBg: false,
   speed: 20,     // degrees/sec equivalent — translation
   rotSpeed: 20,  // degrees/sec equivalent — inclinaison / rotation
   density: 8,
@@ -604,8 +642,10 @@ function unlockTherapistPanel(){
 function startTimer(){
   elapsedSeconds = 0;
   updateTimerDisplay();
+  resetSessionStats();
   elapsedTimer = setInterval(()=>{
     elapsedSeconds++;
+    tickSessionStats();
     updateTimerDisplay();
   }, 1000);
 }
@@ -707,6 +747,8 @@ function wireControls(){
     document.getElementById('densityVal').textContent = state.density;
     pushState();
   };
+  document.getElementById('svvAngleSlider').oninput = (e)=>{ svvSet(parseFloat(e.target.value)); };
+  document.getElementById('svvBgToggle').onclick = ()=>{ state.svvBg = !state.svvBg; syncUI(); pushState(); };
   document.getElementById('beatBpmSlider').oninput = (e)=>{
     state.beatBpm = parseInt(e.target.value);
     syncUI(); pushState();
@@ -722,12 +764,80 @@ function wireControls(){
   syncUI();
 }
 
+/* ---------------- Verticale visuelle subjective ---------------- */
+let svvMeasures = [];
+function svvSet(v){ state.svvAngle = Math.max(-30, Math.min(30, Math.round(v*2)/2)); syncUI(); pushState(); }
+function svvNudge(d){ svvSet((state.svvAngle || 0) + d); }
+function svvRandom(){
+  const mag = 8 + Math.random()*12, sign = Math.random() < 0.5 ? -1 : 1;
+  svvSet(sign * mag);
+}
+function svvRecord(){
+  svvMeasures.push({ angle: state.svvAngle || 0, bg: !!state.svvBg });
+  renderSvvList();
+}
+function svvStats(){
+  if(!svvMeasures.length) return null;
+  const a = svvMeasures.map(m=>m.angle), n = a.length, mean = a.reduce((x,y)=>x+y,0)/n;
+  const sd = n > 1 ? Math.sqrt(a.reduce((x,y)=>x+(y-mean)*(y-mean),0)/(n-1)) : 0;
+  return { n, mean, sd };
+}
+function fmt1(v){ return (Math.round(v*10)/10).toString().replace('.', ','); }
+function renderSvvList(){
+  const el = document.getElementById('svvList'); if(!el) return;
+  const st = svvStats();
+  if(!st){ el.textContent = 'Aucune mesure enregistrée.'; return; }
+  el.textContent = svvMeasures.map(m=> fmt1(m.angle) + '°' + (m.bg ? '*' : '')).join('  ') +
+    `  —  moyenne ${fmt1(st.mean)}°` + (st.n > 1 ? ` (écart-type ${fmt1(st.sd)}°)` : '') + (svvMeasures.some(m=>m.bg) ? '  * fond en rotation' : '');
+}
+
+/* ---------------- Bilan de séance ---------------- */
+const PATTERN_NAMES = {'stripes-v':'Bandes verticales','stripes-h':'Bandes horizontales',dots:'Points',checker:'Damier',tunnel:'Tunnel',target:'Cible mobile',stars:'Étoiles',text:'Texte défilant',waves:'Vagues',beat:'Direction au rythme',svv:'Verticale visuelle'};
+let sessionStats = { playSec:0, pauseSec:0, byPattern:{} };
+function resetSessionStats(){ sessionStats = { playSec:0, pauseSec:0, byPattern:{} }; svvMeasures = []; renderSvvList(); }
+function tickSessionStats(){
+  if(state.playing){
+    sessionStats.playSec++;
+    sessionStats.byPattern[state.pattern] = (sessionStats.byPattern[state.pattern] || 0) + 1;
+  } else sessionStats.pauseSec++;
+}
+function fmtDur(sec){ const m = Math.floor(sec/60), s = sec%60; return `${m} min ${String(s).padStart(2,'0')} s`; }
+function buildRecap(){
+  const now = new Date();
+  const d = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  const L = [];
+  L.push('Bilan de séance — ' + d);
+  L.push(`Durée : ${fmtDur(sessionStats.playSec + sessionStats.pauseSec)} (stimulation ${fmtDur(sessionStats.playSec)}, pause ${fmtDur(sessionStats.pauseSec)})`);
+  const pats = Object.entries(sessionStats.byPattern).sort((a,b)=>b[1]-a[1]);
+  if(pats.length) L.push('Motifs : ' + pats.map(([k,v])=> `${PATTERN_NAMES[k] || k} ${fmtDur(v)}`).join(' ; '));
+  const dirs = [['up','haut'],['down','bas'],['left','gauche'],['right','droite'],['tiltCCW','inclinaison G.'],['tiltCW','inclinaison D.']].filter(([k])=> state[k]).map(([,n])=>n);
+  L.push(`Réglages en fin de séance : ${PATTERN_NAMES[state.pattern] || state.pattern}, directions : ${dirs.length ? dirs.join(' + ') : 'aucune'}, translation ${state.speed} °/s, rotation ${state.rotSpeed} °/s, densité ${state.density}, contraste ${state.contrast} %, séance assise : ${state.seatedMode ? 'oui' : 'non'}`);
+  const st = svvStats();
+  if(st){
+    L.push(`Verticale visuelle : ${st.n} mesure(s) : ${svvMeasures.map(m=> fmt1(m.angle) + '°' + (m.bg ? '*' : '')).join(' ; ')} — moyenne ${fmt1(st.mean)}°` + (st.n > 1 ? `, écart-type ${fmt1(st.sd)}°` : '') + ' (+ = sens horaire' + (svvMeasures.some(m=>m.bg) ? ' ; * fond en rotation' : '') + ')');
+  }
+  const notes = (document.getElementById('sessionNotesArea').value || '').trim();
+  if(notes) L.push('Notes : ' + notes);
+  return L.join('\n');
+}
+function copyRecap(){
+  const text = document.getElementById('recapText').textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    const c = document.getElementById('recapCopied'); c.style.display = 'inline';
+    setTimeout(()=> c.style.display = 'none', 2000);
+  }).catch(()=>{});
+}
+
 function syncUI(){
   document.querySelectorAll('#patternChoices .choice').forEach(el=>{
     el.classList.toggle('active', el.dataset.pattern === state.pattern);
   });
   document.getElementById('tunnelDirRow').style.display = (state.pattern === 'tunnel' || state.pattern === 'stars') ? 'block' : 'none';
   document.getElementById('beatRow').style.display = state.pattern === 'beat' ? 'block' : 'none';
+  document.getElementById('svvRow').style.display = state.pattern === 'svv' ? 'block' : 'none';
+  document.getElementById('svvAngleSlider').value = state.svvAngle || 0;
+  document.getElementById('svvAngleVal').textContent = fmt1(state.svvAngle || 0);
+  document.getElementById('svvBgToggle').classList.toggle('on', !!state.svvBg);
   document.getElementById('beatBpmSlider').value = state.beatBpm;
   document.getElementById('beatBpmVal').textContent = state.beatBpm;
   document.getElementById('beatSoundToggle').classList.toggle('on', !!state.beatSound);
@@ -804,6 +914,12 @@ function togglePlay(){
 function endSession(){
   state.playing = false;
   pushState();
+  clearInterval(elapsedTimer);
+  document.getElementById('recapText').textContent = buildRecap();
+  document.getElementById('recapModal').classList.add('show');
+}
+function closeRecap(){
+  document.getElementById('recapModal').classList.remove('show');
   clearInterval(elapsedTimer);
   clearInterval(emergencyWatch);
   clearInterval(heartbeatInterval);
@@ -1014,7 +1130,7 @@ function drawFrame(ctx, w, h, t, s){
 
   ctx.save();
   const cx0 = w/2, cy0 = h/2;
-  if(rotDir && !['tunnel','target','stars','waves','beat'].includes(s.pattern)){
+  if(rotDir && !['tunnel','target','stars','waves','beat','svv'].includes(s.pattern)){
     // Surdimensionne le motif pour que la rotation ne laisse jamais de bord vide
     ctx.translate(w/2, h/2);
     ctx.rotate(rotAngle);
@@ -1048,6 +1164,21 @@ function drawFrame(ctx, w, h, t, s){
     ctx.lineWidth = Math.max(1, r*0.15);
     ctx.beginPath(); ctx.moveTo(tx-r*1.8, ty); ctx.lineTo(tx+r*1.8, ty); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(tx, ty-r*1.8); ctx.lineTo(tx, ty+r*1.8); ctx.stroke();
+  } else if(s.pattern === 'svv'){
+    const { fg } = baseColorsRGB(s.color);
+    const al = s.contrast/100, m = Math.min(w,h);
+    if(s.svvBg){
+      const ang = (t/1000) * s.rotSpeed * (rotDir || 1) * (Math.PI/180);
+      const sp = Math.max(8, m / Math.max(4, s.density)), R = Math.min(2000, Math.hypot(w,h)/2 + sp);
+      ctx.save(); ctx.translate(cx0, cy0); ctx.rotate(ang);
+      ctx.fillStyle = `rgba(${fg},${al*0.55})`;
+      for(let y = -R; y <= R; y += sp){ for(let x = -R; x <= R; x += sp){ ctx.beginPath(); ctx.arc(x, y, sp*0.07, 0, Math.PI*2); ctx.fill(); } }
+      ctx.restore();
+    }
+    ctx.save(); ctx.translate(cx0, cy0); ctx.rotate((s.svvAngle || 0) * Math.PI/180);
+    ctx.strokeStyle = `rgba(${fg},${al})`; ctx.lineWidth = Math.max(3, m*0.012); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -m*0.22); ctx.lineTo(0, m*0.22); ctx.stroke();
+    ctx.restore();
   } else if(s.pattern === 'stars'){
     const { bg, fg } = baseColorsRGB(s.color);
     const dir = s.tunnelDir || 1;
